@@ -23,6 +23,7 @@ type ArgumentBuilder struct {
 	outputWriter io.Writer
 	errorWriter  io.Writer
 	cmd          string
+	location	 string
 	args         []string
 	capture      bool
 }
@@ -42,11 +43,13 @@ func (b *ArgumentBuilder) SetErrorWriter(w io.Writer) {
 
 func (b *ArgumentBuilder) SetCommand(cmd string) {
 	var args []string
+	location := ""
 
 	if split := strings.Split(cmd, " "); len(split) > 1 {
-		cmd, args = split[0], split[1:]
+		location, cmd, args = split[0], split[1], split[2:]
 	}
 
+	b.location = location
 	b.cmd = cmd
 	b.args = args
 }
@@ -79,7 +82,10 @@ func (b *ArgumentBuilder) GetCommand(p delivery.Properties, d delivery.Info, bod
 		return nil, err
 	}
 
+	b.log.Info("cmd = " + b.cmd)
+	b.log.Info("location = " + b.location)
 	cmd := exec.Command(b.cmd, append(b.args, buf.String())...)
+	cmd.Dir = b.location
 	cmd.Env = os.Environ()
 
 	if b.capture {
