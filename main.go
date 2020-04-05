@@ -93,6 +93,10 @@ var flags []cli.Flag = []cli.Flag{
 		Usage: "Path under which to expose metrics.",
 		Value: "/metrics",
 	},
+	cli.StringFlag{
+		Name:  "env-code",
+		Usage: "Get config by env-code from enviroments.",
+	},
 }
 
 var ll logr.Logger
@@ -276,13 +280,18 @@ func LoadConfiguration(c *cli.Context) (*config.Config, error) {
 	file := c.String("configuration")
 	url := c.String("url")
 	queue := c.String("queue-name")
+	envCode := c.String("env-code")
 
-	if file == "" && url == "" && queue == "" && c.String("executable") == "" {
+	if envCode == "" && file == "" && url == "" && queue == "" && c.String("executable") == "" {
 		cli.ShowAppHelp(c)
 		return nil, cli.NewExitError("", 1)
 	}
 
 	cfg, err := configuration(file)
+	if envCode != "" {
+		cfg, err = configurationEnv(envCode)
+	}
+	
 	if err != nil {
 		return nil, fmt.Errorf("failed parsing configuration: %s", err)
 	}
@@ -320,4 +329,12 @@ func configuration(file string) (*config.Config, error) {
 	}
 
 	return config.LoadAndParse(file)
+}
+
+func configurationEnv(envCode string) (*config.Config, error) {
+	if envCode == "" {
+		return config.CreateFromString("")
+	}
+
+	return config.LoadFromEnv(envCode)
 }

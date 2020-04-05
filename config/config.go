@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"path/filepath"
 
 	"gopkg.in/gcfg.v1"
@@ -286,4 +287,66 @@ func transformArrayOfStringToStringValue(iterable []string) []string {
 	}
 
 	return ret
+}
+
+func LoadFromEnv(envCode string) (*Config, error) {
+	cfg := &Config{}
+	mq := &cfg.RabbitMq
+	mq.Host = getEnv(envCode, "MQ_HOST")
+	mq.Username = getEnv(envCode, "MQ_USER")
+	mq.Password = getEnv(envCode, "MQ_PASSWORD")
+	mq.Port = "5672"
+	mq.Vhost = getEnv(envCode, "MQ_VHOST")
+	mq.Queue = getEnv(envCode, "MQ_QUEUE_NAME")
+	// mq.Compression = false
+	mq.Onfailure = 3
+	// mq.Stricfailure = false
+
+	prefetch := cfg.Prefetch
+	prefetch.Count = 3
+	prefetch.Global = true
+	
+	queueSettings := &cfg.QueueSettings
+	queueSettings.Routingkey = strings.Split(getEnv(envCode, "MQ_ROUTE_KEY"), ",")
+	// queueSettings.MessageTTL = 0
+	// queueSettings.DeadLetterExchange = 0
+	// queueSettings.DeadLetterRoutingKey = 0
+	queueSettings.Priority = 10
+	queueSettings.Nodeclare = true
+	queueSettings.Durable = true
+	queueSettings.Exclusive = false
+	queueSettings.AutoDelete = true
+	queueSettings.NoWait = false
+
+	exchange := &cfg.Exchange
+	exchange.Name = getEnv(envCode, "MQ_EXCHANGE_NAME")
+	exchange.Autodelete = false
+	exchange.Type = "direct"
+	exchange.Durable = true
+	
+	log := &cfg.Logs
+	log.Error = "/tmp/error.log"
+	log.Info = "/tmp/Info.log"
+	log.NoDateTime = false
+	log.Verbose = true
+
+	// cfg.RabbitMq = mq
+	// cfg.Prefetch = prefetch
+	// cfg.QueueSettings = queueSettings
+	// cfg.Exchange = exchange
+	// cfg.Logs = log
+
+	return cfg, nil
+}
+
+func getEnv(envCode string, name string) (value string) {
+	if envCode != "" {
+		envCode = envCode + "_"
+	}
+	ev, exist := os.LookupEnv(envCode + name)
+	if !exist {
+		ev = ""
+	}
+	fmt.Printf("env name :  %v\n", ev)
+	return ev
 }
